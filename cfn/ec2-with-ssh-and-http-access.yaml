@@ -1,0 +1,238 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: EC2 instance in a custom VPC with SSH and HTTP access
+
+Parameters:
+  NameTagPrefix:
+    Description: The prefix given to the tag named Name
+    Type: String
+    AllowedPattern: '[a-z][a-z0-9]*'
+    MinLength: 1
+    MaxLength: 20
+
+  GroupTag:
+    Description: The name given to the tag named Group
+    Type: String
+    AllowedPattern: '[a-z][a-z0-9-]*'
+    MinLength: 1
+    MaxLength: 100
+
+  VpcCidr:
+    Description: CIDR block for the VPC
+    Type: String
+    AllowedPattern: '([0-9]{1,3}\.){3}[0-9]{1,3}\/[0-9]{1,2}'
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.12.0.0/16
+
+  PublicSubnetCidr:
+    Description: CIDR block for the public subnet
+    Type: String
+    AllowedPattern: '([0-9]{1,3}\.){3}[0-9]{1,3}\/[0-9]{1,2}'
+    MinLength: 9
+    MaxLength: 18
+    Default: 10.12.0.0/24
+
+  AzForPublicSubnet:
+    Description: Availability Zone for the public subnet
+    Type: String
+    Default: ap-northeast-1a
+
+  ExistOrNotKeyPairForSsh:
+    Description: Set to true if you want to use an existing SSH key pair
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    Default: false
+
+  ExistingKeyPairNameForSsh:
+    Description: Name of the existing SSH key pair
+    Type: String
+
+  Ec2InstanceImageId:
+    Description: ID of the AMI to use for the EC2 instance (Default is Amazon Linux 2)
+    Type: String
+    Default: ami-0f89bdd365c3d966d
+
+  Ec2InstanceType:
+    Description: Instance type for the EC2 instance
+    Type: String
+    AllowedValues:
+      - t2.micro
+      - t2.medium
+      - t2.large
+      - m5.large
+      - m5.xlarge
+    Default: t2.micro
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Use for tags
+        Parameters:
+          - NameTagPrefix
+          - GroupTag
+      - Label:
+          default: Network config
+        Parameters:
+          - VpcCidr
+          - PublicSubnetCidr
+          - AzForPublicSubnet
+      - Label:
+          default: EC2 config
+        Parameters:
+          - ExistOrNotKeyPairForSsh
+          - ExistingKeyPairNameForSsh
+          - Ec2InstanceImageId
+          - Ec2InstanceType
+
+Conditions:
+  CreateKeyPairForSsh: !Equals
+    - !Ref ExistOrNotKeyPairForSsh
+    - false
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      Tags:
+        - Key: Name
+          Value: !Sub '${NameTagPrefix}-vpc'
+        - Key: Group
+          Value: !Ref GroupTag
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties: 
+      Tags:
+        - Key: Name
+          Value: !Sub '${NameTagPrefix}-igw'
+        - Key: Group
+          Value: !Ref GroupTag
+
+  AttachInternetGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnetCidr
+      AvailabilityZone: !Ref AzForPublicSubnet
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${NameTagPrefix}-subnet'
+        - Key: Group
+          Value: !Ref GroupTag
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${NameTagPrefix}-rtb'
+        - Key: Group
+          Value: !Ref GroupTag
+
+  Route:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  AssociatePublicSubnetWithRouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref RouteTable
+
+  SecurityGroupForSsh:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access
+      GroupName: !Sub '${NameTagPrefix}-sg-for-ssh'
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: for ssh
+      Tags:
+        - Key: Name
+          Value: !Sub '${NameTagPrefix}-sg-for-ssh'
+        - Key: Group
+          Value: !Ref GroupTag
+
+  SecurityGroupForHttp:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP access
+      GroupName: !Sub '${NameTagPrefix}-sg-for-http'
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: for http
+      Tags:
+        - Key: Name
+          Value: !Sub '${NameTagPrefix}-sg-for-http'
+        - Key: Group
+          Value: !Ref GroupTag
+
+  KeyPairForSsh:
+    Type: AWS::EC2::KeyPair
+    Condition: CreateKeyPairForSsh
+    Properties:
+      KeyName: !Sub '${NameTagPrefix}-key'
+      Tags:
+        - Key: Name
+          Value: !Sub '${NameTagPrefix}-key'
+        - Key: Group
+          Value: !Ref GroupTag
+
+  Ec2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref Ec2InstanceImageId
+      InstanceType: !Ref Ec2InstanceType
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref SecurityGroupForSsh
+        - !Ref SecurityGroupForHttp
+      KeyName: !If [CreateKeyPairForSsh, !Ref KeyPairForSsh, !Ref ExistingKeyPairNameForSsh]
+      Tags:
+        - Key: Name
+          Value: !Sub '${NameTagPrefix}-ec2'
+        - Key: Group
+          Value: !Ref GroupTag
+
+  ElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref Ec2Instance
+      Tags:
+        - Key: Name
+          Value: !Sub '${NameTagPrefix}-eip'
+        - Key: Group
+          Value: !Ref GroupTag
+
+Outputs:
+  PublicIp:
+    Description: Public IP address of the EC2 instance
+    Value: !GetAtt Ec2Instance.PublicIp
+  KeyPairId:
+    Condition: CreateKeyPairForSsh
+    Description: ID of the KeyPair to use for SSH (Stored in "Systems Manager Parameter Store" with the name "/ec2/keypair/${KeyPairId}")
+    Value: !GetAtt KeyPairForSsh.KeyPairId
