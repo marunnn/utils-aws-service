@@ -1,25 +1,13 @@
+import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import * as cdk from 'aws-cdk-lib';
-import * as logs from 'aws-cdk-lib/aws-logs';
-import * as fs from 'fs';
+import { LogGroups } from './constructs/log-groups';
 
-export class LogsLogGroupsBasedOnAmazonCloudwatchAgentJsonStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+export class LogsLogGroupsBasedOnAmazonCloudwatchAgentJsonStack extends Stack {
+  constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    const amazonCloudwatchAgentJsonString: string = fs.readFileSync('./lib/amazon-cloudwatch-agent.json', 'utf-8');
-    const logConfigs: Array<any> = JSON.parse(amazonCloudwatchAgentJsonString).logs.logs_collected.files.collect_list;
+    const env: string = this.node.getContext('env');
 
-    const tagEnv: string = process.env.ENV || '';
-
-    for (const logConfig of logConfigs) {
-      const logGroup = new logs.LogGroup(this, `log-group-${logConfig.log_group_name}`, {
-        logGroupName: logConfig.log_group_name,
-        retention: logs.RetentionDays.ONE_YEAR
-      });
-
-      cdk.Tags.of(logGroup).add('Group', 'Sample');
-      cdk.Tags.of(logGroup).add('Env', tagEnv);
-    }
+    const logGroups = new LogGroups(this, 'LogGroups', { env: env });
   }
 }

@@ -11,20 +11,19 @@
             "log_group_name": "prefix/sample01",
             "log_stream_name": "sample01.log",
             "timestamp_format": "%H: %M: %S%y%b%-d",
-            "retention_in_days": 365
+            "retention_in_days": 120
           },
           {
             "file_path": "/opt/aws/amazon-cloudwatch-agent/logs/sample02.log",
             "log_group_name": "prefix/sample02",
             "log_stream_name": "{hostname}",
             "timestamp_format": "%H: %M: %S%y%b%-d",
-            "retention_in_days": 365
+            "retention_in_days": 90
           },
           {
             "file_path": "/opt/aws/amazon-cloudwatch-agent/logs/sample03.log",
             "log_group_name": "prefix/sample03",
-            "timestamp_format": "%H: %M: %S%y%b%-d",
-            "retention_in_days": 365
+            "timestamp_format": "%H: %M: %S%y%b%-d"
           }
         ]
       }
