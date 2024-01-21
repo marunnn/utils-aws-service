@@ -6,7 +6,7 @@ import { LogsLogGroupsBasedOnAmazonCloudwatchAgentJsonStack } from '../lib/logs-
 const app = new cdk.App();
 const env: string = app.node.getContext('env');
 new LogsLogGroupsBasedOnAmazonCloudwatchAgentJsonStack(app, 'LogsLogGroupsBasedOnAmazonCloudwatchAgentJsonStack', {
-  stackName: `${env}-logs-log-groups-based-on-amazon-cloudwatch-agent-json`,
+  stackName: `sample-${env}-logs-log-groups-based-on-amazon-cloudwatch-agent-json-stack`,
   tags: {
     group: 'sample',
     env: env,
