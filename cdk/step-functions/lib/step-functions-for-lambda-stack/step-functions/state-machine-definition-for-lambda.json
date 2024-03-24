@@ -1,0 +1,14 @@
+{
+  "Comment": "Distributed map that reads CSV file for order data and detects delayed orders",
+  "StartAt": "Foo process",
+  "States": {
+    "Foo process": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${fooProcessFunctionName}:latest"
+      },
+      "End": true
+    }
+  }
+}
