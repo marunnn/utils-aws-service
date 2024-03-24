@@ -1,6 +1,6 @@
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { SampleLambda } from './constructs/sample-lambda';
+import { FooLambda } from './constructs/foo-lambda';
 
 export class LambdaStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -8,6 +8,6 @@ export class LambdaStack extends Stack {
 
     const env: string = this.node.getContext('env');
 
-    const sampleVpc = new SampleLambda(this, 'Sample', { env: env });
+    const fooLambda = new FooLambda(this, 'FooLambda', { env: env });
   }
 }
